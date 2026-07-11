@@ -1,95 +1,119 @@
-import { joinRoom, type JsonValue, type Room } from "trystero";
+import { joinRoom, selfId, type JsonValue, type Room } from "trystero";
+import type { PatternId, ToneId } from "./backgrounds";
 import type { Profile } from "./profile";
 
-export type Cursor = Profile & { x: number; y: number; updatedAt: number };
-export type ScenePacket = {
+export { selfId };
+
+export type ScenePayload = {
   elements: JsonValue[];
   files: Record<string, JsonValue>;
-  appState: { viewBackgroundColor: string; gridSize: number };
 };
 
-type WireProfile = {
-  actorId: string;
-  name: string;
-  avatar: string;
-  accent: string;
-};
+export type BackgroundPayload = { pattern: PatternId; tone: ToneId };
 
-type WireCursor = WireProfile & { x: number; y: number; updatedAt: number };
+/** Cursor travels in Excalidraw *scene* coordinates so every peer can project it through their own scroll/zoom. */
+export type CursorPayload = { x: number; y: number };
 
-type RoomCallbacks = {
+type WireProfile = { name: string; avatar: string; accent: string };
+
+export type RoomCallbacks = {
   onPeerJoin: (peerId: string) => void;
   onPeerLeave: (peerId: string) => void;
-  onProfile: (peerId: string, profile: Profile) => void;
-  onCursor: (peerId: string, cursor: Cursor) => void;
-  onScene: (peerId: string, scene: ScenePacket) => void;
-  onStream: (peerId: string, stream: MediaStream) => void;
+  onProfile: (peerId: string, profile: Omit<Profile, "actorId">) => void;
+  onCursor: (peerId: string, cursor: CursorPayload) => void;
+  /** Incremental updates and full syncs both land here; merge is identical. */
+  onScene: (peerId: string, scene: ScenePayload) => void;
+  onBackground: (peerId: string, background: BackgroundPayload) => void;
 };
 
-const MAX_PEERS = 3;
-const MAX_SCENE_BYTES = 4 * 1024 * 1024;
+export const MAX_PEERS = 7; // 8 people per room; a full WebRTC mesh stays comfortable at this size
+const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024;
+const CURSOR_INTERVAL_MS = 40;
 
 export class EzRoom {
   private readonly room: Room;
-  private readonly scene;
-  private readonly profileAction;
-  private readonly cursorAction;
-  private lastSceneAt = 0;
+  private readonly update;
+  private readonly sync;
+  private readonly cursor;
+  private readonly hello;
+  private readonly bg;
+  private lastCursorAt = 0;
+  private closed = false;
 
   constructor(
     readonly code: string,
-    private readonly profile: Profile,
+    profile: Profile,
     private readonly callbacks: RoomCallbacks,
-    private readonly getScene: () => ScenePacket | null,
+    getScene: () => ScenePayload | null,
+    getBackground: () => BackgroundPayload,
   ) {
-    this.room = joinRoom({ appId: "online.vyasdevgna.ezboard" }, code);
-    this.scene = this.room.makeAction<ScenePacket>("scene-v1");
-    this.profileAction = this.room.makeAction<WireProfile>("profile-v1");
-    this.cursorAction = this.room.makeAction<WireCursor>("cursor-v1");
+    // ponytail: nostr relays sign peers in; the room code doubles as an E2E password
+    // so relays only ever see ciphertext. TURN-less — direct P2P or nothing.
+    this.room = joinRoom(
+      { appId: "online.vyasdevgna.ezboard", password: `ez:${code}`, relayConfig: { redundancy: 4 } },
+      code,
+    );
+    this.update = this.room.makeAction<ScenePayload>("up");
+    this.sync = this.room.makeAction<ScenePayload>("sync");
+    this.cursor = this.room.makeAction<CursorPayload>("cur");
+    this.hello = this.room.makeAction<WireProfile>("hi");
+    this.bg = this.room.makeAction<BackgroundPayload>("bg");
+
     this.room.onPeerJoin = (peerId) => {
-      if (Object.keys(this.room.getPeers()).length > MAX_PEERS) return;
+      if (this.closed || this.peerCount > MAX_PEERS) return;
       this.callbacks.onPeerJoin(peerId);
-      void this.profileAction.send(toWireProfile(this.profile), { target: peerId });
-      const scene = this.getScene();
-      if (scene) void this.scene.send(scene, { target: peerId });
+      // Every existing peer greets the newcomer with identity + full board state;
+      // version-merge makes the redundancy harmless and the sync robust.
+      void this.hello.send(toWire(profile), { target: peerId });
+      void this.bg.send(getBackground(), { target: peerId });
+      const scene = getScene();
+      if (scene && fits(scene)) void this.sync.send(scene, { target: peerId });
     };
-    this.room.onPeerLeave = this.callbacks.onPeerLeave;
-    this.room.onPeerStream = (stream, peerId) => this.callbacks.onStream(peerId, stream);
-    this.profileAction.onMessage = (profile, { peerId }) => this.callbacks.onProfile(peerId, fromWireProfile(profile));
-    this.cursorAction.onMessage = (cursor, { peerId }) => this.callbacks.onCursor(peerId, { ...fromWireProfile(cursor), x: cursor.x, y: cursor.y, updatedAt: cursor.updatedAt });
-    this.scene.onMessage = (scene, { peerId }) => {
-      if (JSON.stringify(scene).length <= MAX_SCENE_BYTES) this.callbacks.onScene(peerId, scene);
-    };
+    this.room.onPeerLeave = (peerId) => this.callbacks.onPeerLeave(peerId);
+    this.hello.onMessage = (wire, { peerId }) => this.callbacks.onProfile(peerId, fromWire(wire));
+    this.cursor.onMessage = (cursor, { peerId }) => this.callbacks.onCursor(peerId, cursor);
+    this.bg.onMessage = (background, { peerId }) => this.callbacks.onBackground(peerId, background);
+    this.update.onMessage = (scene, { peerId }) => this.callbacks.onScene(peerId, scene);
+    this.sync.onMessage = (scene, { peerId }) => this.callbacks.onScene(peerId, scene);
   }
 
   get peerCount(): number {
     return Object.keys(this.room.getPeers()).length;
   }
 
-  sendScene(scene: ScenePacket): void {
+  sendUpdate(scene: ScenePayload): void {
+    if (!this.closed && this.peerCount > 0 && fits(scene)) void this.update.send(scene);
+  }
+
+  sendCursor(cursor: CursorPayload): void {
     const now = performance.now();
-    if (now - this.lastSceneAt < 120 || JSON.stringify(scene).length > MAX_SCENE_BYTES) return;
-    this.lastSceneAt = now;
-    void this.scene.send(scene);
+    if (this.closed || now - this.lastCursorAt < CURSOR_INTERVAL_MS) return;
+    this.lastCursorAt = now;
+    void this.cursor.send(cursor);
   }
 
-  sendCursor(cursor: Cursor): void {
-    void this.cursorAction.send({ ...toWireProfile(cursor), x: cursor.x, y: cursor.y, updatedAt: cursor.updatedAt });
+  sendProfile(profile: Profile): void {
+    if (!this.closed) void this.hello.send(toWire(profile));
   }
 
-  addStream(stream: MediaStream): void {
-    void Promise.all(this.room.addStream(stream));
+  sendBackground(background: BackgroundPayload): void {
+    if (!this.closed) void this.bg.send(background);
   }
 
   async leave(): Promise<void> {
+    this.closed = true;
     await this.room.leave();
   }
 }
 
-function toWireProfile(profile: Profile): WireProfile {
-  return { actorId: profile.actorId, name: profile.name, avatar: profile.avatar ?? "", accent: profile.accent };
+function fits(payload: ScenePayload): boolean {
+  return JSON.stringify(payload).length <= MAX_PAYLOAD_BYTES;
 }
 
-function fromWireProfile(profile: WireProfile): Profile {
-  return { actorId: profile.actorId, name: profile.name, avatar: profile.avatar || undefined, accent: profile.accent };
+function toWire(profile: Profile): WireProfile {
+  return { name: profile.name, avatar: profile.avatar ?? "", accent: profile.accent };
+}
+
+function fromWire(wire: WireProfile): Omit<Profile, "actorId"> {
+  return { name: wire.name, avatar: wire.avatar || undefined, accent: wire.accent };
 }

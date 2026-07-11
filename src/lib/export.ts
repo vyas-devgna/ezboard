@@ -18,8 +18,9 @@ function download(blob: Blob, name: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export async function exportBoard(kind: "png" | "svg" | "json" | "pdf", input: ExportInput): Promise<void> {
-  const base = `ezboard-${new Date().toISOString().slice(0, 10)}`;
+export async function exportBoard(kind: "png" | "svg" | "json" | "pdf", raw: ExportInput, background: string, name = "board"): Promise<void> {
+  const base = `${name.replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "") || "board"}-${new Date().toISOString().slice(0, 10)}`;
+  const input: ExportInput = { ...raw, appState: { ...raw.appState, viewBackgroundColor: background, exportBackground: true } };
   if (kind === "json") {
     download(new Blob([serializeAsJSON(input.elements, input.appState, input.files, "local")], { type: "application/json" }), `${base}.excalidraw`);
     return;

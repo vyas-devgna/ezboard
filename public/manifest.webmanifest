@@ -1,9 +1,17 @@
 {
-  "name": "ezboard",
+  "name": "ezboard — collaborative canvas",
   "short_name": "ezboard",
+  "description": "A private, peer-to-peer whiteboard for system design and brainstorming. Boards stay on your device; sessions connect browsers directly.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f7fb",
+  "orientation": "any",
+  "background_color": "#f4f4f8",
   "theme_color": "#6054ee",
-  "icons": [{ "src": "/brand/ezboard-mark.png", "sizes": "512x512", "type": "image/png" }]
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/brand/ezboard-mark.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/ezboard-mark.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
