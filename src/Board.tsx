@@ -279,10 +279,12 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
 
   const importFile = useCallback(async (file: File) => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsed = JSON.parse(await file.text()) as { type?: string; libraryItems?: any[]; elements?: ExcalidrawElement[]; files?: Record<string, BinaryFileData> };
       const current = apiRef.current;
       if (!current) return;
       if (parsed.type === "excalidrawlib") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         current.updateLibrary({ libraryItems: parsed.libraryItems as any, merge: true, openLibraryMenu: true });
         pushRef.current("Library imported successfully.");
         return;
@@ -423,6 +425,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
     for (const [id, cursor] of Object.entries(cursors)) {
       const person = participants[id];
       if (person) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pointer: any = { x: cursor.x, y: cursor.y };
         if (cursor.tool) pointer.tool = cursor.tool;
         collabs.set(id, {
@@ -604,7 +607,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
                 pushRef.current(`Added ${lib.name} to your library.`);
               }
               setLibraryBrowserOpen(false);
-            } catch (err) {
+            } catch {
               pushRef.current(`Failed to load ${lib.name}.`);
             }
           }}
