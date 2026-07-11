@@ -1,147 +1,156 @@
-<!-- Header ------------------------------------------------------------------->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vyas-devgna/ezboard/main/public/brand/ezboard-mark.png" alt="ezboard logo" width="120" height="120" style="border-radius:26px;box-shadow:0 12px 40px rgba(96,84,238,0.45);" />
+  <img src="public/brand/ezboard-mark.png" alt="EzBoard logo" width="104" />
 </p>
 
-<h1 align="center">ezboard</h1>
+<h1 align="center">EzBoard</h1>
 
 <p align="center">
-  <a href="https://readme-typing-svg.demolab.com">
-    <img src="https://readme-typing-svg.demolab.com?font=Assistant&weight=700&size=22&pause=1200&color=6054EE&center=true&vCenter=true&width=560&lines=A+private%2C+peer-to-peer+collaborative+canvas;Sketch+system+designs+together+in+real+time;Brainstorm%2C+wireframe%2C+diagram+%E2%80%94+browser+to+browser;No+servers.+No+uploads.+Just+your+ideas." alt="ezboard tagline" />
-  </a>
+  <strong>A private, local-first canvas where people and AI agents draw together.</strong>
 </p>
 
 <p align="center">
-  <a href="https://ezboard.vyasdevgna.online"><img src="https://img.shields.io/badge/Launch-ezboard.vyasdevgna.online-6054EE?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Launch ezboard" /></a>
-  &nbsp;
-  <a href="https://github.com/vyas-devgna/ezboard/actions"><img src="https://img.shields.io/github/actions/workflow/status/vyas-devgna/ezboard/deploy-pages.yml?style=for-the-badge&label=Deploy&logo=githubactions&logoColor=white" alt="Deploy status" /></a>
+  Real-time collaboration · Infinite canvas · AI diagramming · No accounts
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-18-149ECA?style=flat-square&logo=react&logoColor=white" alt="React 18" />
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/WebRTC-P2P-333333?style=flat-square&logo=webrtc&logoColor=white" alt="WebRTC" />
-  <img src="https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="PWA" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT" />
+  <a href="https://ezboard.vyasdevgna.online"><img alt="Open EzBoard" src="https://img.shields.io/badge/Open_EzBoard-6054EE?style=for-the-badge&logo=googlechrome&logoColor=white"></a>
+  <a href="https://github.com/vyas-devgna/ezboard/actions/workflows/deploy-pages.yml"><img alt="Deployment" src="https://img.shields.io/github/actions/workflow/status/vyas-devgna/ezboard/deploy-pages.yml?style=for-the-badge&label=Deploy"></a>
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-f2c94c?style=for-the-badge">
 </p>
 
-<p align="center">
-  <b>ezboard</b> is an infinite whiteboard for small teams that connects browsers <b>directly</b> over WebRTC.<br/>
-  Your boards live on your device. Live sessions never touch a server — the room code itself encrypts the handshake.
-</p>
+![EzBoard collaborative architecture canvas](docs/screenshots/collaborative-board.png)
 
----
+## Draw at the speed of thought
 
-## ✨ Why ezboard
+EzBoard turns a browser tab into a shared visual workspace. Sketch system designs, map ideas, build wireframes, or invite an AI agent to turn a prompt into a structured Excalidraw diagram. Boards stay on your device and live collaboration travels directly between peers over encrypted WebRTC data channels.
 
-|  | |
+| What you get | How it helps |
 |---|---|
-| 🔒 **Local-first & private** | Boards are stored in your browser (IndexedDB). Nothing is uploaded — ever. |
-| 🌐 **True peer-to-peer** | Up to **8 people** connect browser-to-browser in a full WebRTC mesh. Canvas data flows directly between peers. |
-| 🖱️ **Cursors that track the canvas** | Live cursors travel in *scene* coordinates and are re-projected through every peer's own pan & zoom — they follow the drawing, not the window. |
-| 🔁 **Resilient sync** | Version-diffed incremental updates, a full state hand-off on join, and automatic reconnection when your network drops and returns. |
-| 🧩 **Built for thinking** | A shape library for **system design**, **brainstorming**, and **UI wireframes** — databases, queues, load balancers, sticky notes, browsers, phones, cards, and more. |
-| 🎨 **Backgrounds that pan & zoom** | Dots, grid, ruled, or graph paper in five paper tones — glued to the canvas and shared with the whole room. |
-| 🌗 **Polished everywhere** | Light & dark themes, fluid animations, and a fully responsive layout with native-feeling bottom sheets on mobile. |
-| 📲 **Installable PWA** | Add to your home screen and launch offline — the app shell and editor are cached by a service worker. |
+| **Infinite Excalidraw canvas** | Draw naturally with shapes, arrows, text, images, laser pointers, and keyboard shortcuts. |
+| **Live peer-to-peer rooms** | Share a five-character room code and collaborate without accounts or a hosted board database. |
+| **AI collaborator protocol** | Connect any local, hosted, CLI, or IDE agent through provider-neutral NDJSON. |
+| **30 featured libraries** | Start quickly with reusable Excalidraw assets plus built-in system, brainstorm, and wireframe stencils. |
+| **Local-first persistence** | Boards, profile settings, and theme preferences remain in browser storage. |
+| **Production-ready exports** | Export boards as `.excalidraw`, PNG, SVG, or PDF. |
 
----
+## A focused workspace
 
-## 🚀 Try it in 30 seconds
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="EzBoard local-first dashboard"></td>
+    <td width="50%"><img src="docs/screenshots/shape-library.png" alt="EzBoard shape library and system architecture"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Local-first dashboard</strong><br>Boards remain on this device.</td>
+    <td align="center"><strong>Built for technical thinking</strong><br>System design, brainstorming, and wireframe components.</td>
+  </tr>
+</table>
+
+## Start in 30 seconds
 
 1. Open **[ezboard.vyasdevgna.online](https://ezboard.vyasdevgna.online)**.
-2. Hit **New board** and start drawing — it saves itself as you go.
-3. Press **Share → Start session** and send the link or the 5-character room code.
-4. Your collaborator opens it and you're drawing together, instantly. No sign-up, no server.
+2. Select **New board** and begin drawing.
+3. Select **Share → Start session**.
+4. Send the link or room code to collaborators.
 
-> **Tip:** every board remembers its last room, so you can **Rejoin** a session straight from the board header.
+No registration, workspace setup, or server configuration is required.
 
----
+## Architecture
 
-## 🧠 How it works
-
-```
- ┌────────────┐        encrypted WebRTC data channels        ┌────────────┐
- │  Browser A │ ◄──────────────────────────────────────────► │  Browser B │
- │  (you)     │   scene diffs · cursors · presence · bg       │  (peer)    │
- └─────┬──────┘                                               └─────┬──────┘
-       │            handshake only (SDP/ICE), E2E-encrypted         │
-       │        ┌──────────────────────────────────────────┐       │
-       └───────►│   public Nostr relays  (rendezvous only)  │◄──────┘
-                └──────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A[Browser A] <-->|Encrypted WebRTC scene updates| B[Browser B]
+    A -. room discovery .-> R[Public Nostr relays]
+    B -. room discovery .-> R
+    AI[AI agent bridge] <-->|ezboard.agent.v1 NDJSON| M[Any model or agent]
+    AI <-->|WebRTC room peer| A
+    A --> L[(IndexedDB + localStorage)]
 ```
 
-- **Rendezvous, not routing.** [Trystero](https://github.com/dmotz/trystero) uses public Nostr relays purely to introduce peers. Once connected, all board data travels peer-to-peer.
-- **The room code is the key.** It doubles as an end-to-end password, so relays only ever see ciphertext.
-- **Conflict-free merging.** Every element carries a version + nonce; a deterministic last-writer-wins merge means all peers converge on the same scene, and deletions never resurrect.
-- **Only what changed.** Edits broadcast as version-diffed deltas; a joining peer gets a one-time full snapshot.
+- **Direct collaboration:** Trystero uses public Nostr relays for peer discovery; canvas data then moves through WebRTC data channels.
+- **Deterministic convergence:** element versions and nonces resolve concurrent edits without resurrecting deleted objects.
+- **Efficient updates:** peers broadcast changed elements and provide a full snapshot when someone joins.
+- **Static deployment:** the React application is built by Vite and served from GitHub Pages with a custom domain and enforced HTTPS.
 
----
+## Connect any AI agent
 
-## 🛠️ Run locally
+The bridge does not depend on a specific model vendor. It prints one request as JSON per line and accepts one matching response on stdin.
 
 ```bash
+cd AI-EZBOARD
 npm install
-npm run dev          # http://localhost:5173
-```
-
-### Connect any AI agent
-
-```bash
-cd AI-EZBOARD && npm install
 node index.js ROOM_CODE
 ```
 
-The bridge prints one provider-neutral `ezboard.agent.v1` JSON request per line and accepts one JSON response per line on stdin. Requests include the current scene, a drawing-quality contract, and a `requestId`, so local models, hosted models, shell agents, and IDE agents can all use the same interface. See [`skills/ezboard-agent/SKILL.md`](skills/ezboard-agent/SKILL.md) for the response workflow.
+Request:
 
-Quality gates:
-
-```bash
-npm run lint         # ESLint
-npm run typecheck    # tsc --strict
-npm run test:run     # Vitest
-npm run build        # production bundle
+```json
+{"protocol":"ezboard.agent.v1","requestId":"…","input":{"message":"Draw a zero-trust architecture","elements":[]}}
 ```
 
----
+Response:
 
-## 📦 Tech stack
+```json
+{"requestId":"…","message":"Diagram created","elements":[]}
+```
 
-| Layer | Choice |
-|-------|--------|
-| Editor engine | [Excalidraw](https://github.com/excalidraw/excalidraw) (self-hosted runtime, CSP-safe) |
-| Framework | React 18 + TypeScript (strict) |
-| Bundler | Vite 8 |
-| Networking | Trystero (WebRTC over Nostr) |
-| Storage | IndexedDB (boards) · localStorage (profile & theme) |
-| Hosting | GitHub Pages + custom domain, HTTPS enforced |
+Requests include the current scene, quality constraints, and a unique ID for concurrent work. Responses are validated before being added to the board. The reusable agent instructions live in [`skills/ezboard-agent/SKILL.md`](skills/ezboard-agent/SKILL.md).
 
----
+## Run locally
 
-## 🌍 Deploy to GitHub Pages
+Requirements: Node.js 22+ and npm.
 
-1. Push to `main` — the included workflow lints, type-checks, tests, builds, and deploys automatically.
-2. In **Settings → Pages**, set **Source** to **GitHub Actions** and add your custom domain (`public/CNAME` preserves it in the artifact).
-3. Add a `CNAME` DNS record pointing your subdomain at `<user>.github.io`.
-4. Once GitHub's DNS check passes, enable **Enforce HTTPS**. If a browser still shows an old HTTP warning after GitHub reports an approved certificate, open the explicit `https://` URL once and clear that site's cached data.
+```bash
+git clone https://github.com/vyas-devgna/ezboard.git
+cd ezboard
+npm install
+npm run dev
+```
 
-> **Note on production hardening:** static hosting has no signaling or TURN service, so connectivity relies on public relays and direct ICE. For a hardened launch, back Trystero with a small authenticated relay and short-lived TURN credentials — never embed permanent TURN secrets in the static bundle.
+Quality checks:
 
----
+```bash
+npm run lint
+npm run typecheck
+npm run test:run
+npm run build
+```
 
-## 💜 Support the project
+## Technology
 
-ezboard is built and maintained in spare time. **Sponsors and tips** keep it free, private, and improving.
+| Layer | Technology |
+|---|---|
+| Canvas | Excalidraw |
+| UI | React 18 + TypeScript |
+| Build | Vite 8 |
+| Collaboration | Trystero + WebRTC + Nostr discovery |
+| Storage | IndexedDB + localStorage |
+| AI bridge | Node.js + Puppeteer + NDJSON |
+| Hosting | GitHub Pages + GitHub Actions |
+
+## Deploy
+
+Push to `main`; [the Pages workflow](.github/workflows/deploy-pages.yml) installs, lints, type-checks, tests, builds, and deploys the site.
+
+For a custom subdomain:
+
+1. Put the domain in [`public/CNAME`](public/CNAME).
+2. Point its DNS `CNAME` record to `vyas-devgna.github.io`.
+3. Select **GitHub Actions** as the Pages source.
+4. Wait for certificate approval, then enable **Enforce HTTPS**.
+
+If a browser retains an old HTTP warning after GitHub reports an approved certificate, open the explicit `https://` URL and clear that site's cached data.
+
+## Privacy and network limits
+
+EzBoard has no accounts and does not upload boards to an application database. Public discovery relays can observe connection metadata, and direct peer connectivity depends on the networks involved. The current deployment intentionally has no hosted TURN service; restrictive corporate or carrier networks may prevent a room connection.
+
+For a controlled production environment, provide authenticated rendezvous infrastructure and short-lived TURN credentials. Never place permanent TURN credentials in the static client bundle.
+
+## Contributing
+
+Issues and focused pull requests are welcome. Keep changes small, preserve the local-first model, and run the quality checks before submitting.
 
 <p align="center">
-  <a href="https://github.com/sponsors/vyas-devgna"><img src="https://img.shields.io/badge/Sponsor-@vyas--devgna-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor @vyas-devgna on GitHub" height="32" /></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://vyasdevgna.online//Portfolio/tip.html"><img src="https://raw.githubusercontent.com/vyas-devgna/beatblocks-control/main/docs/upi-logo.png" alt="Tip via UPI" width="88" height="31" style="vertical-align:middle;" /></a>
-</p>
-
----
-
-<p align="center">
-  <sub>Built with 💜 by <a href="https://vyasdevgna.online">Devgna Vyas</a> · Boards stay on your device · Sessions stay between browsers</sub>
+  Built by <a href="https://vyasdevgna.online">Devgna Vyas</a> · <a href="https://github.com/sponsors/vyas-devgna">Sponsor the project</a>
 </p>
