@@ -12,8 +12,8 @@ import { mergeElements } from "./lib/scene";
 const BOARD_KEY = "ezboard.board.v1";
 const MAX_PARTICIPANTS = 4;
 
-const EXCALIDRAW_INITIAL_DATA = { appState: { viewBackgroundColor: "#f7f7fb" } };
-const EXCALIDRAW_UI_OPTIONS = { canvasActions: { loadScene: true, saveToActiveFile: false, export: false } };
+const EXCALIDRAW_INITIAL_DATA = { appState: { viewBackgroundColor: "#f7f7fb" } } as const;
+const EXCALIDRAW_UI_OPTIONS = { canvasActions: { loadScene: true, saveToActiveFile: false, export: false } } as const;
 
 type StoredBoard = {
   elements: ExcalidrawElement[];
