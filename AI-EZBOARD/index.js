@@ -1,6 +1,5 @@
 const puppeteer = require("puppeteer");
 const readline = require("readline");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 let ROOM_CODE = process.argv[2];
 const BASE_URL = process.argv[3] || "https://ezboard.vyasdevgna.online";
@@ -72,36 +71,44 @@ async function main() {
       console.log(JSON.stringify(promptData));
       console.log("=== EZBOARD_PROMPT_END ===");
 
-      if (!process.env.GEMINI_API_KEY) {
-        console.log("[ERROR] GEMINI_API_KEY is not set.");
-        await page.evaluate(() => {
-          if (window.sendAiChat) window.sendAiChat("ERROR: GEMINI_API_KEY environment variable is not set on the server.");
-        });
-        return;
+      try {
+        const metadata = process.env.ANTIGRAVITY_SOURCE_METADATA;
+        if (metadata) {
+          const parsed = JSON.parse(metadata);
+          const conversationId = parsed.tool?.conversationId || parsed.conversationId;
+          if (conversationId) {
+            const { exec } = require("child_process");
+            const payloadStr = JSON.stringify(promptData).replace(/"/g, '\\"');
+            const msg = `=== EZBOARD_PROMPT_START ===\\n${payloadStr}\\n=== EZBOARD_PROMPT_END ===`;
+            exec(`agentapi send-message ${conversationId} "${msg}"`, (err) => {
+              if (err) console.error("[ERROR] Failed to send message via agentapi:", err);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[ERROR] Failed to extract conversation ID:", err);
       }
 
-      console.log("[INFO] Calling Gemini API...");
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      const systemPrompt = `You are Antigravity, an AI collaborator in an EzBoard drawing session.
-You will be provided with the user's prompt and the current JSON array of Excalidraw elements.
-You must return a JSON object exactly in this format (no markdown code blocks, just raw JSON):
-{
-  "message": "A brief, friendly message describing what you did.",
-  "elements": [ { new element 1 }, { new element 2 } ]
-}
-Make your diagrams highly detailed, professional, properly laid out, with colors, arrows and varying font sizes.
-Provide new elements with unique 8-character ids, version=1, versionNonce=123.
-For coordinates, space elements properly.`;
+      const newElementsJson = await new Promise((resolve) => {
+        let buffer = "";
+        let reading = false;
+        
+        const onLine = (line) => {
+          if (line === "=== EZBOARD_REPLY_START ===") {
+            reading = true;
+            buffer = "";
+          } else if (line === "=== EZBOARD_REPLY_END ===") {
+            reading = false;
+            rl.removeListener("line", onLine);
+            resolve(buffer);
+          } else if (reading) {
+            buffer += line + "\n";
+          }
+        };
+        rl.on("line", onLine);
+      });
 
-      const promptStr = `${systemPrompt}\n\nUser Prompt: ${message}\n\nCurrent Elements: ${JSON.stringify(elements)}`;
-
-      const result = await model.generateContent(promptStr);
-      let text = result.response.text();
-      text = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/g, "").trim();
-
-      const payload = JSON.parse(text);
+      const payload = JSON.parse(newElementsJson);
       let replyMessage = "";
       let newElements = [];
       
