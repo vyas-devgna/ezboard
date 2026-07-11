@@ -3,6 +3,7 @@ import {
   exportToCanvas,
   MainMenu,
   viewportCoordsToSceneCoords,
+  restoreElements,
 } from "@excalidraw/excalidraw";
 import type { AppState, BinaryFileData, BinaryFiles, ExcalidrawImperativeAPI, Collaborator } from "@excalidraw/excalidraw/types/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/types/element/types";
@@ -13,6 +14,7 @@ import { patternStyle, toneColor, PATTERNS, TONES, type PatternId, type ToneId }
 import { getMeta, loadScene, saveScene, updateMeta, type BoardMeta } from "./lib/boards";
 import { exportBoard } from "./lib/export";
 import { buildStencil, type Stencil } from "./lib/library";
+import { AIChat } from "./AIChat";
 import type { Profile } from "./lib/profile";
 import { EzRoom, MAX_PEERS, type BackgroundPayload, type ScenePayload } from "./lib/room";
 import { generateRoomCode, normalizeRoomCode } from "./lib/room-code";
@@ -138,18 +140,18 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
   }, []);
 
   const applyRemote = useCallback((_peerId: string, payload: ScenePayload) => {
-    const current = apiRef.current;
-    if (!current || !Array.isArray(payload.elements)) return;
+    const api = apiRef.current;
+    if (!api || !Array.isArray(payload.elements)) return;
     const incoming = payload.elements as unknown as ExcalidrawElement[];
-    // Pre-mark incoming versions: newer-than-ours won't echo back; older-than-ours
-    // leaves our copy "dirty" so the stale peer gets corrected on the next flush.
+    if (incoming.length === 0) return;
     for (const element of incoming) sentVersions.current.set(element.id, versionKey(element));
     const fileList = Object.values(payload.files ?? {}) as unknown as BinaryFileData[];
     for (const file of fileList) knownFiles.current.add(file.id);
-    const merged = mergeElements(current.getSceneElementsIncludingDeleted(), incoming);
+    const merged = mergeElements(api.getSceneElementsIncludingDeleted(), incoming);
+    const restored = restoreElements(merged, null, { repairBindings: true });
     applyingRemote.current = true;
-    if (fileList.length) current.addFiles(fileList);
-    current.updateScene({ elements: merged, commitToHistory: false });
+    if (fileList.length) api.addFiles(fileList);
+    api.updateScene({ elements: restored, commitToHistory: false });
     window.setTimeout(() => { applyingRemote.current = false; }, 0);
     scheduleSave();
     scheduleFlush();
@@ -182,6 +184,12 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         return { ...people, [id]: remote };
       }),
       onCursor: (id, cursor) => setCursors((current) => ({ ...current, [id]: { ...cursor, t: Date.now() } })),
+      onAiChat: (id, msg) => {
+        window.dispatchEvent(new CustomEvent("ai-chat", { detail: { id, msg } }));
+        if (typeof (window as any).onAIChatReceived === "function") {
+          (window as any).onAIChatReceived(id, msg);
+        }
+      },
       onScene: applyRemote,
       onBackground: (_id, remoteBackground) => {
         backgroundRef.current = remoteBackground;
@@ -212,6 +220,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
   const onApi = useCallback((instance: ExcalidrawImperativeAPI) => {
     apiRef.current = instance;
     setApi(instance);
+    (window as any).excalidrawAPI = instance;
     window.setTimeout(() => {
       if (instance.getSceneElements().length) instance.scrollToContent(undefined, { fitToContent: true });
     }, 0);
@@ -283,9 +292,10 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       const parsed = JSON.parse(await file.text()) as { type?: string; libraryItems?: any[]; elements?: ExcalidrawElement[]; files?: Record<string, BinaryFileData> };
       const current = apiRef.current;
       if (!current) return;
-      if (parsed.type === "excalidrawlib") {
+      const items = parsed.libraryItems || (parsed as any).library;
+      if (parsed.type === "excalidrawlib" || items) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        current.updateLibrary({ libraryItems: parsed.libraryItems as any, merge: true, openLibraryMenu: true });
+        current.updateLibrary({ libraryItems: items as any, merge: true, openLibraryMenu: true });
         pushRef.current("Library imported successfully.");
         return;
       }
@@ -438,6 +448,40 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
     }
     api.updateScene({ collaborators: collabs });
   }, [api, cursors, participants, roomCode]);
+
+  // Load top 20 libraries automatically in the background
+  useEffect(() => {
+    if (!api) return;
+    const loadLibraries = async () => {
+      try {
+        const res = await fetch("https://libraries.excalidraw.com/libraries.json");
+        const data = await res.json();
+        const top20 = data.slice(0, 20);
+        
+        const allItems: any[] = [];
+        const promises = top20.map((lib: any) =>
+          fetch(`https://libraries.excalidraw.com/${lib.source}`)
+            .then(r => r.json())
+            .then(libData => {
+              const items = libData.libraryItems || libData.library;
+              if (items && Array.isArray(items)) {
+                allItems.push(...items);
+              }
+            })
+            .catch(() => {})
+        );
+        
+        await Promise.allSettled(promises);
+        
+        if (allItems.length > 0) {
+          api.updateLibrary({ libraryItems: allItems, merge: true });
+        }
+      } catch (err) {
+        console.error("Failed to load default libraries:", err);
+      }
+    };
+    void loadLibraries();
+  }, [api]);
 
   /* ---------- render ---------- */
 
@@ -595,15 +639,18 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       <input ref={fileInput} type="file" accept=".excalidraw,.excalidrawlib,application/json" hidden
         onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ""; }} />
 
-      {libraryBrowserOpen && (
+      <AIChat onSendAiChat={(msg) => roomRef.current?.sendAiChat(msg)} />
+
+      {libraryBrowserOpen && api && (
         <LibraryBrowser
           onClose={() => setLibraryBrowserOpen(false)}
           onInstall={async (lib) => {
             try {
               const res = await fetch(`https://libraries.excalidraw.com/libraries/${lib.source}`);
               const data = await res.json();
-              if (apiRef.current && data.type === "excalidrawlib") {
-                apiRef.current.updateLibrary({ libraryItems: data.libraryItems, merge: true, openLibraryMenu: true });
+              const items = data.libraryItems || data.library;
+              if (apiRef.current && (data.type === "excalidrawlib" || items)) {
+                apiRef.current.updateLibrary({ libraryItems: items, merge: true, openLibraryMenu: true });
                 pushRef.current(`Added ${lib.name} to your library.`);
               }
               setLibraryBrowserOpen(false);

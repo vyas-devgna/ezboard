@@ -13,6 +13,7 @@ export type BackgroundPayload = { pattern: PatternId; tone: ToneId };
 
 /** Cursor travels in Excalidraw *scene* coordinates so every peer can project it through their own scroll/zoom. */
 export type CursorPayload = { x: number; y: number; tool?: "pointer" | "laser"; button?: "up" | "down" };
+export type AiChatPayload = string;
 
 type WireProfile = { name: string; avatar: string; accent: string };
 
@@ -21,6 +22,7 @@ export type RoomCallbacks = {
   onPeerLeave: (peerId: string) => void;
   onProfile: (peerId: string, profile: Omit<Profile, "actorId">) => void;
   onCursor: (peerId: string, cursor: CursorPayload) => void;
+  onAiChat: (peerId: string, message: AiChatPayload) => void;
   /** Incremental updates and full syncs both land here; merge is identical. */
   onScene: (peerId: string, scene: ScenePayload) => void;
   onBackground: (peerId: string, background: BackgroundPayload) => void;
@@ -37,6 +39,7 @@ export class EzRoom {
   private readonly cursor;
   private readonly hello;
   private readonly bg;
+  private readonly aiChat;
   private lastCursorAt = 0;
   private closed = false;
 
@@ -58,6 +61,7 @@ export class EzRoom {
     this.cursor = this.room.makeAction<CursorPayload>("cur");
     this.hello = this.room.makeAction<WireProfile>("hi");
     this.bg = this.room.makeAction<BackgroundPayload>("bg");
+    this.aiChat = this.room.makeAction<AiChatPayload>("chat");
 
     this.room.onPeerJoin = (peerId) => {
       if (this.closed || this.peerCount > MAX_PEERS) return;
@@ -75,6 +79,7 @@ export class EzRoom {
     this.bg.onMessage = (background, { peerId }) => this.callbacks.onBackground(peerId, background);
     this.update.onMessage = (scene, { peerId }) => this.callbacks.onScene(peerId, scene);
     this.sync.onMessage = (scene, { peerId }) => this.callbacks.onScene(peerId, scene);
+    this.aiChat.onMessage = (message, { peerId }) => this.callbacks.onAiChat(peerId, message);
   }
 
   get peerCount(): number {
@@ -94,6 +99,10 @@ export class EzRoom {
 
   sendProfile(profile: Profile): void {
     if (!this.closed) void this.hello.send(toWire(profile));
+  }
+
+  sendAiChat(message: AiChatPayload): void {
+    if (!this.closed) void this.aiChat.send(message);
   }
 
   sendBackground(background: BackgroundPayload): void {
