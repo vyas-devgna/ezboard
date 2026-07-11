@@ -17,13 +17,9 @@ const rl = readline.createInterface({
 
 let resolveAiResponse = null;
 
-// Read lines from stdin
 rl.on("line", (line) => {
-  if (resolveAiResponse) {
-    if (line.startsWith("=== EZBOARD_REPLY_END ===")) {
-      resolveAiResponse(null); // Just close the buffer if ended normally?
-      // Actually we should buffer lines
-    }
+  if (resolveAiResponse && line.startsWith("=== EZBOARD_REPLY_END ===")) {
+    resolveAiResponse(null);
   }
 });
 
@@ -32,7 +28,11 @@ async function main() {
   const page = await browser.newPage();
   
   await page.evaluateOnNewDocument(() => {
-    localStorage.setItem("ezboard-profile", JSON.stringify({ name: "AI Collaborator", accent: "#ff00ff" }));
+    localStorage.setItem("ezboard-profile", JSON.stringify({ 
+      name: "Antigravity", 
+      accent: "#8A2BE2",
+      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Antigravity&backgroundColor=8A2BE2"
+    }));
   });
 
   const roomUrl = `${BASE_URL}/#/room/${ROOM_CODE}`;
@@ -51,12 +51,10 @@ async function main() {
         elements
       };
       
-      // Print to stdout for the Agent to read
       console.log("=== EZBOARD_PROMPT_START ===");
       console.log(JSON.stringify(promptData));
       console.log("=== EZBOARD_PROMPT_END ===");
 
-      // Wait for Agent to reply with JSON elements on stdin
       const newElementsJson = await new Promise((resolve) => {
         let buffer = "";
         let reading = false;
@@ -77,8 +75,38 @@ async function main() {
       });
 
       const newElements = JSON.parse(newElementsJson);
+      console.log(`[INFO] Received ${newElements.length} elements from Agent.`);
       
-      console.log(`[INFO] Applying ${newElements.length} elements to board...`);
+      if (newElements.length > 0) {
+        // Calculate center of new elements in scene coordinates
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const el of newElements) {
+          if (el.x < minX) minX = el.x;
+          if (el.y < minY) minY = el.y;
+          if (el.x + el.width > maxX) maxX = el.x + el.width;
+          if (el.y + el.height > maxY) maxY = el.y + el.height;
+        }
+        
+        if (minX !== Infinity) {
+          const centerX = (minX + maxX) / 2;
+          const centerY = (minY + maxY) / 2;
+          
+          // Get viewport coordinates using Excalidraw appState
+          const viewportCoords = await page.evaluate((cx, cy) => {
+            const state = window.excalidrawAPI.getAppState();
+            const vx = (cx + state.scrollX) * state.zoom.value;
+            const vy = (cy + state.scrollY) * state.zoom.value;
+            return { x: vx, y: vy };
+          }, centerX, centerY);
+          
+          // Simulate mouse movement (this will broadcast to other peers)
+          await page.mouse.move(viewportCoords.x, viewportCoords.y, { steps: 15 });
+          // Short delay to let users see the cursor arrive before the drawing appears
+          await new Promise(r => setTimeout(r, 400)); 
+        }
+      }
+
+      console.log(`[INFO] Applying elements to board...`);
       await page.evaluate((newElementsStr) => {
         window.excalidrawAPI.updateScene({ elements: JSON.parse(newElementsStr), commitToHistory: false });
       }, JSON.stringify(newElements));
