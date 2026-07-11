@@ -1,12 +1,24 @@
 const puppeteer = require("puppeteer");
 const readline = require("readline");
 
-const ROOM_CODE = process.argv[2];
-const BASE_URL = process.argv[3] || "http://localhost:5173";
+let ROOM_CODE = process.argv[2];
+const BASE_URL = process.argv[3] || "https://ezboard.vyasdevgna.online";
 
 if (!ROOM_CODE) {
-  console.error("Usage: node index.js <ROOM_CODE> [BASE_URL]");
-  process.exit(1);
+  // Generate random 5 character valid room code (no I, L, O, 0, 1)
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  ROOM_CODE = "";
+  for (let i = 0; i < 5; i++) {
+    ROOM_CODE += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  console.log(`[INFO] No room code provided. Generated automatic session code: ${ROOM_CODE}`);
+} else {
+  // Validate room code
+  ROOM_CODE = ROOM_CODE.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (ROOM_CODE.length !== 5 || /[ILO01]/.test(ROOM_CODE)) {
+    console.error(`[ERROR] Invalid room code ${ROOM_CODE}. Must be exactly 5 letters/digits, excluding I, L, O, 0, 1.`);
+    process.exit(1);
+  }
 }
 
 const rl = readline.createInterface({
@@ -28,10 +40,14 @@ async function main() {
   const page = await browser.newPage();
   
   await page.evaluateOnNewDocument(() => {
-    localStorage.setItem("ezboard-profile", JSON.stringify({ 
+    // Valid accents: "#6054ee", "#e15d4f", "#118a73", "#ca7a18", "#2473d5"
+    const aiAvatarSvg = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%236054ee' rx='20'/%3E%3Ccircle cx='30' cy='40' r='10' fill='white'/%3E%3Ccircle cx='70' cy='40' r='10' fill='white'/%3E%3Cpath d='M30 70 Q50 85 70 70' stroke='white' stroke-width='6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E";
+    
+    localStorage.setItem("ezboard.profile.v1", JSON.stringify({ 
+      actorId: "ai-antigravity-bot",
       name: "Antigravity", 
-      accent: "#8A2BE2",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Antigravity&backgroundColor=8A2BE2"
+      accent: "#6054ee",
+      avatar: aiAvatarSvg
     }));
   });
 
@@ -78,7 +94,6 @@ async function main() {
       console.log(`[INFO] Received ${newElements.length} elements from Agent.`);
       
       if (newElements.length > 0) {
-        // Calculate center of new elements in scene coordinates
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const el of newElements) {
           if (el.x < minX) minX = el.x;
@@ -91,7 +106,6 @@ async function main() {
           const centerX = (minX + maxX) / 2;
           const centerY = (minY + maxY) / 2;
           
-          // Get viewport coordinates using Excalidraw appState
           const viewportCoords = await page.evaluate((cx, cy) => {
             const state = window.excalidrawAPI.getAppState();
             const vx = (cx + state.scrollX) * state.zoom.value;
@@ -99,10 +113,8 @@ async function main() {
             return { x: vx, y: vy };
           }, centerX, centerY);
           
-          // Simulate mouse movement (this will broadcast to other peers)
-          await page.mouse.move(viewportCoords.x, viewportCoords.y, { steps: 15 });
-          // Short delay to let users see the cursor arrive before the drawing appears
-          await new Promise(r => setTimeout(r, 400)); 
+          await page.mouse.move(viewportCoords.x, viewportCoords.y, { steps: 25 });
+          await new Promise(r => setTimeout(r, 600)); 
         }
       }
 
