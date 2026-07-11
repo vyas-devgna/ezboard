@@ -21,6 +21,7 @@ import { generateRoomCode, normalizeRoomCode } from "./lib/room-code";
 import { diffElements, mergeElements, versionKey } from "./lib/scene";
 import { Avatar, Icon, ProfileDialog, Toasts, useToasts } from "./ui";
 import { LibraryBrowser } from "./LibraryBrowser";
+import { INCLUDED_LIBRARY_COUNT, LIBRARY_CATALOG_URL, libraryAssetUrl, readLibraryItems } from "./lib/remote-library";
 
 declare global {
   interface Window {
@@ -463,24 +464,25 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
     api.updateScene({ collaborators: collabs });
   }, [api, cursors, participants, roomCode]);
 
-  // Load top 20 libraries automatically in the background
+  // Load the catalog's first 30 featured libraries in the background.
   useEffect(() => {
     if (!api) return;
     const loadLibraries = async () => {
       try {
-        const res = await fetch("https://libraries.excalidraw.com/libraries.json");
+        const res = await fetch(LIBRARY_CATALOG_URL);
+        if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
-        const top20 = data.slice(0, 20);
+        const featured = data.slice(0, INCLUDED_LIBRARY_COUNT);
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allItems: any[] = [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const promises = top20.map((lib: any) =>
-          fetch(`https://libraries.excalidraw.com/${lib.source}`)
-            .then(r => r.json())
+        const promises = featured.map((lib: any) =>
+          fetch(libraryAssetUrl(lib.source))
+            .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
             .then(libData => {
-              const items = libData.libraryItems || libData.library;
-              if (items && Array.isArray(items)) {
+              const items = readLibraryItems(libData);
+              if (items.length) {
                 allItems.push(...items);
               }
             })
@@ -662,10 +664,11 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
           onClose={() => setLibraryBrowserOpen(false)}
           onInstall={async (lib) => {
             try {
-              const res = await fetch(`https://libraries.excalidraw.com/libraries/${lib.source}`);
+              const res = await fetch(libraryAssetUrl(lib.source));
+              if (!res.ok) throw new Error(String(res.status));
               const data = await res.json();
-              const items = data.libraryItems || data.library;
-              if (apiRef.current && (data.type === "excalidrawlib" || items)) {
+              const items = readLibraryItems(data);
+              if (apiRef.current && items.length) {
                 apiRef.current.updateLibrary({ libraryItems: items, merge: true, openLibraryMenu: true });
                 pushRef.current(`Added ${lib.name} to your library.`);
               }

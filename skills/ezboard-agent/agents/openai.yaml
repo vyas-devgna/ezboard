@@ -1,0 +1,4 @@
+interface:
+  display_name: "EzBoard Agent"
+  short_description: "Draw clear Excalidraw diagrams in EzBoard"
+  default_prompt: "Use $ezboard-agent to answer an EzBoard drawing request."

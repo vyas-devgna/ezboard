@@ -86,6 +86,15 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
+### Connect any AI agent
+
+```bash
+cd AI-EZBOARD && npm install
+node index.js ROOM_CODE
+```
+
+The bridge prints one provider-neutral `ezboard.agent.v1` JSON request per line and accepts one JSON response per line on stdin. Requests include the current scene, a drawing-quality contract, and a `requestId`, so local models, hosted models, shell agents, and IDE agents can all use the same interface. See [`skills/ezboard-agent/SKILL.md`](skills/ezboard-agent/SKILL.md) for the response workflow.
+
 Quality gates:
 
 ```bash
@@ -115,7 +124,7 @@ npm run build        # production bundle
 1. Push to `main` — the included workflow lints, type-checks, tests, builds, and deploys automatically.
 2. In **Settings → Pages**, set **Source** to **GitHub Actions** and add your custom domain (`public/CNAME` preserves it in the artifact).
 3. Add a `CNAME` DNS record pointing your subdomain at `<user>.github.io`.
-4. Once GitHub's DNS check passes, enable **Enforce HTTPS**.
+4. Once GitHub's DNS check passes, enable **Enforce HTTPS**. If a browser still shows an old HTTP warning after GitHub reports an approved certificate, open the explicit `https://` URL once and clear that site's cached data.
 
 > **Note on production hardening:** static hosting has no signaling or TURN service, so connectivity relies on public relays and direct ICE. For a hardened launch, back Trystero with a small authenticated relay and short-lived TURN credentials — never embed permanent TURN secrets in the static bundle.
 

@@ -12,7 +12,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
     const handleChat = (e: Event) => {
       const { id, msg } = (e as CustomEvent).detail;
       if (id === "self") return;
-      setMessages((prev) => [...prev, { sender: "Antigravity", text: msg }]);
+      setMessages((prev) => [...prev, { sender: "AI Agent", text: msg }]);
       setIsTyping(false);
       setOpen(true);
     };
@@ -27,9 +27,10 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
   }, [messages]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages((prev) => [...prev, { sender: "You", text: input }]);
-    onSendAiChat(input);
+    const message = input.trim().slice(0, 4000);
+    if (!message) return;
+    setMessages((prev) => [...prev, { sender: "You", text: message }]);
+    onSendAiChat(message);
     setInput("");
     setIsTyping(true);
   };
@@ -45,7 +46,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
           <div className="ai-chat-messages">
             {messages.length === 0 && !isTyping && (
               <div className="ai-chat-empty">
-                No messages yet. Ask Antigravity to draw or modify something!
+                Ask your connected AI agent to draw, explain, or modify the board.
               </div>
             )}
             {messages.map((msg, idx) => (
@@ -56,7 +57,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
             ))}
             {isTyping && (
               <div className="ai-message ai">
-                <div className="ai-message-sender">Antigravity</div>
+                <div className="ai-message-sender">AI Agent</div>
                 <div className="typing-indicator">
                   <span></span><span></span><span></span>
                 </div>
@@ -71,13 +72,14 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask AI to draw..."
+              maxLength={4000}
               className="ai-chat-input"
             />
             <button onClick={handleSend} className="ai-chat-send">Send</button>
           </div>
         </div>
       )}
-      <button onClick={() => setOpen(!open)} className="ai-chat-fab">
+      <button onClick={() => setOpen(!open)} className="ai-chat-fab" aria-label="Toggle AI collaborator">
         <Icon name="users" size={24} />
       </button>
     </div>
