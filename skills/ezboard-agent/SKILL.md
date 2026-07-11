@@ -28,3 +28,5 @@ Read one `ezboard.agent.v1` JSON request per line from stdout. Write exactly one
 7. Copy `requestId` exactly so concurrent requests are routed correctly.
 
 Keep the response machine-readable. Do not wrap JSON in Markdown or print commentary to stdout.
+
+For a detached bridge, set `EZBOARD_RESPONSE_FILE` to an append-only NDJSON file; the bridge watches it for responses while requests continue on stdout.

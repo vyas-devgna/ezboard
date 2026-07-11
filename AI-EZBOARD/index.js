@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
 const readline = require("node:readline");
+const fs = require("node:fs");
 const { createAgentRequest, parseAgentResponse } = require("./protocol");
 
 const BASE_URL = process.argv[3] || "https://ezboard.vyasdevgna.online";
@@ -51,6 +52,21 @@ function listenForResponses() {
       console.error(`[agent] ${error.message}`);
     }
   });
+
+  const responseFile = process.env.EZBOARD_RESPONSE_FILE;
+  if (responseFile) {
+    let offset = fs.existsSync(responseFile) ? fs.statSync(responseFile).size : 0;
+    fs.watchFile(responseFile, { interval: 250 }, () => {
+      try {
+        const content = fs.readFileSync(responseFile, "utf8");
+        const appended = content.slice(offset);
+        offset = content.length;
+        for (const line of appended.split(/\r?\n/)) if (line.trim()) acceptResponse(line);
+      } catch (error) {
+        console.error(`[agent] ${error.message}`);
+      }
+    });
+  }
 }
 
 async function main() {
