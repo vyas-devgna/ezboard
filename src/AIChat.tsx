@@ -5,12 +5,15 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
   const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleChat = (e: Event) => {
-      const { msg } = (e as CustomEvent).detail;
+      const { id, msg } = (e as CustomEvent).detail;
+      if (id === "self") return;
       setMessages((prev) => [...prev, { sender: "Antigravity", text: msg }]);
+      setIsTyping(false);
       setOpen(true);
     };
     window.addEventListener("ai-chat", handleChat);
@@ -28,6 +31,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
     setMessages((prev) => [...prev, { sender: "You", text: input }]);
     onSendAiChat(input);
     setInput("");
+    setIsTyping(true);
   };
 
   return (
@@ -39,7 +43,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
             <button onClick={() => setOpen(false)} className="ai-chat-close"><Icon name="leave" size={14} /></button>
           </div>
           <div className="ai-chat-messages">
-            {messages.length === 0 && (
+            {messages.length === 0 && !isTyping && (
               <div className="ai-chat-empty">
                 No messages yet. Ask Antigravity to draw or modify something!
               </div>
@@ -50,6 +54,14 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
                 <div>{msg.text}</div>
               </div>
             ))}
+            {isTyping && (
+              <div className="ai-message ai">
+                <div className="ai-message-sender">Antigravity</div>
+                <div className="typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
           <div className="ai-chat-input-area">
