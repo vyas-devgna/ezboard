@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const { createAgentRequest, parseAgentResponse } = require("./protocol");
 
 const BASE_URL = process.argv[3] || "https://ezboard.vyasdevgna.online";
-const RESPONSE_TIMEOUT_MS = 120_000;
+const RESPONSE_TIMEOUT_MS = 600_000;
 const pending = new Map();
 
 function roomCode(value) {
