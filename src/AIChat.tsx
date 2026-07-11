@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -8,7 +8,7 @@ export function AIChat({ onSendAiChat }: { onSendAiChat: (msg: string) => void }
 
   useEffect(() => {
     const handleChat = (e: Event) => {
-      const { id, msg } = (e as CustomEvent).detail;
+      const { msg } = (e as CustomEvent).detail;
       setMessages((prev) => [...prev, { sender: "AI Collaborator", text: msg }]);
       setOpen(true);
     };
