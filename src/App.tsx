@@ -12,6 +12,9 @@ import { mergeElements } from "./lib/scene";
 const BOARD_KEY = "ezboard.board.v1";
 const MAX_PARTICIPANTS = 4;
 
+const EXCALIDRAW_INITIAL_DATA = { appState: { viewBackgroundColor: "#f7f7fb" } };
+const EXCALIDRAW_UI_OPTIONS = { canvasActions: { loadScene: true, saveToActiveFile: false, export: false } };
+
 type StoredBoard = {
   elements: ExcalidrawElement[];
   files: BinaryFiles;
@@ -68,7 +71,7 @@ export default function App() {
     const merged = mergeElements(api.getSceneElementsIncludingDeleted(), remoteElements);
     applyingRemote.current = true;
     api.addFiles(Object.values(packet.files) as BinaryFiles[string][]);
-    api.updateScene({ elements: merged, appState: packet.appState });
+    api.updateScene({ elements: merged, appState: packet.appState as any, commitToHistory: false });
     window.setTimeout(() => { applyingRemote.current = false; }, 0);
   }, []);
 
@@ -302,8 +305,8 @@ export default function App() {
         <Excalidraw
           excalidrawAPI={loadBoard}
           onChange={onChange}
-          initialData={{ appState: { viewBackgroundColor: "#f7f7fb" } }}
-          UIOptions={{ canvasActions: { loadScene: true, saveToActiveFile: false, export: false } }}
+          initialData={EXCALIDRAW_INITIAL_DATA}
+          UIOptions={EXCALIDRAW_UI_OPTIONS}
           theme="light"
         />
         <div className="canvas-hint">Drag images in · Select multiple items to group · Press ? for shortcuts</div>
