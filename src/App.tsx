@@ -256,26 +256,45 @@ export default function App() {
     return () => window.removeEventListener("pointermove", onMove);
   }, [profile]);
 
+  const clearBoard = useCallback(() => {
+    if (window.confirm("Are you sure you want to clear the board? This action cannot be undone.")) {
+      apiRef.current?.resetScene();
+      notify("Board cleared.");
+    }
+  }, [notify]);
+
   return (
     <main className="app-shell">
       <header className="topbar">
-        <button className="brand" onClick={() => setProfileOpen(true)} aria-label="Edit local profile">
+        <button className="brand" onClick={() => setProfileOpen(true)} title="Edit local profile">
           <img src="/brand/ezboard-mark.png" alt="" />
-          <span>ezboard</span><small>private canvas</small>
+          <div className="brand-text">
+            <span>ezboard</span>
+            <small>private canvas</small>
+          </div>
         </button>
         <div className={`room-pill ${roomCode ? "is-live" : ""}`}>
           <i />{roomCode ? `ROOM ${roomCode}` : "LOCAL MODE"}
           {roomCode && <button onClick={copyInvite}>Copy invite</button>}
         </div>
         <div className="top-actions">
-          <div className="avatars" aria-label={`${participants.length + 1} participants`}>
+          <div className="avatars" aria-label={`${participants.length + 1} participants`} title={`${participants.length + 1} participants in room`}>
             <span className="avatar self" style={{ backgroundColor: profile.accent }}>{profile.avatar ? <img src={profile.avatar} alt="" /> : initials(profile.name)}</span>
-            {participants.slice(0, 3).map((person) => <span className="avatar" key={person.id} style={{ backgroundColor: person.accent }}>{person.avatar ? <img src={person.avatar} alt="" /> : initials(person.name)}</span>)}
-            {participants.length > 3 && <span className="avatar more">+{participants.length - 3}</span>}
+            {participants.slice(0, 3).map((person) => <span className="avatar" key={person.id} style={{ backgroundColor: person.accent }} title={person.name}>{person.avatar ? <img src={person.avatar} alt="" /> : initials(person.name)}</span>)}
+            {participants.length > 3 && <span className="avatar more" title={`+${participants.length - 3} more`}>+{participants.length - 3}</span>}
           </div>
-          <button className={`icon-button ${micOn ? "active" : ""}`} onClick={toggleMic} title="Voice">{micOn ? "Voice on" : "Voice"}</button>
-          <button className={`icon-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording} title="Record session">{recording ? "Stop" : "Record"}</button>
-          <button className="primary" onClick={() => roomCode ? copyInvite() : setRoomOpen(true)}>{roomCode ? "Share" : "Collaborate"}</button>
+          <button className={`icon-button ${micOn ? "active" : ""}`} onClick={toggleMic} title={micOn ? "Turn Voice Off" : "Turn Voice On"}>
+            <div className="mic-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+              </svg>
+              {micOn && <div className="voice-wave"><span /><span /><span /></div>}
+            </div>
+          </button>
+          <button className={`icon-button ${recording ? "recording" : ""}`} onClick={recording ? stopRecording : startRecording} title={recording ? "Stop Recording" : "Record Session"}>{recording ? "Stop" : "Record"}</button>
+          <button className="primary" onClick={() => roomCode ? copyInvite() : setRoomOpen(true)} title={roomCode ? "Copy Invite Link" : "Collaborate with others"}>{roomCode ? "Share" : "Collaborate"}</button>
         </div>
       </header>
 
@@ -288,8 +307,9 @@ export default function App() {
           theme="light"
         />
         <div className="canvas-hint">Drag images in · Select multiple items to group · Press ? for shortcuts</div>
+        <button className="clear-button" onClick={clearBoard} title="Clear board">Clear Board</button>
         <label className="import-button" title="Import .excalidraw"><input type="file" accept=".excalidraw,application/json" onChange={(event) => event.target.files?.[0] && void importBoard(event.target.files[0])} />Import</label>
-        <button className="export-button" onClick={() => setExportOpen((open) => !open)}>Export</button>
+        <button className="export-button" onClick={() => setExportOpen((open) => !open)} title="Export board">Export</button>
         {exportOpen && <div className="export-menu">
           {(["png", "svg", "pdf", "json"] as const).map((kind) => <button key={kind} onClick={() => {
             const api = apiRef.current;
