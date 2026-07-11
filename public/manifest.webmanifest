@@ -1,0 +1,9 @@
+{
+  "name": "ezboard",
+  "short_name": "ezboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7fb",
+  "theme_color": "#6054ee",
+  "icons": [{ "src": "/brand/ezboard-mark.png", "sizes": "512x512", "type": "image/png" }]
+}
