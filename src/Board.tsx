@@ -22,6 +22,13 @@ import { diffElements, mergeElements, versionKey } from "./lib/scene";
 import { Avatar, Icon, ProfileDialog, Toasts, useToasts } from "./ui";
 import { LibraryBrowser } from "./LibraryBrowser";
 
+declare global {
+  interface Window {
+    onAIChatReceived?: (id: string, msg: string) => void;
+    excalidrawAPI?: ExcalidrawImperativeAPI;
+  }
+}
+
 const UI_OPTIONS = {
   canvasActions: {
     changeViewBackgroundColor: false,
@@ -186,8 +193,8 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       onCursor: (id, cursor) => setCursors((current) => ({ ...current, [id]: { ...cursor, t: Date.now() } })),
       onAiChat: (id, msg) => {
         window.dispatchEvent(new CustomEvent("ai-chat", { detail: { id, msg } }));
-        if (typeof (window as any).onAIChatReceived === "function") {
-          (window as any).onAIChatReceived(id, msg);
+        if (typeof window.onAIChatReceived === "function") {
+          window.onAIChatReceived(id, msg);
         }
       },
       onScene: applyRemote,
@@ -220,7 +227,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
   const onApi = useCallback((instance: ExcalidrawImperativeAPI) => {
     apiRef.current = instance;
     setApi(instance);
-    (window as any).excalidrawAPI = instance;
+    window.excalidrawAPI = instance;
     window.setTimeout(() => {
       if (instance.getSceneElements().length) instance.scrollToContent(undefined, { fitToContent: true });
     }, 0);
@@ -292,7 +299,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       const parsed = JSON.parse(await file.text()) as { type?: string; libraryItems?: any[]; elements?: ExcalidrawElement[]; files?: Record<string, BinaryFileData> };
       const current = apiRef.current;
       if (!current) return;
-      const items = parsed.libraryItems || (parsed as any).library;
+      const items = parsed.libraryItems || (parsed as Record<string, unknown>).library;
       if (parsed.type === "excalidrawlib" || items) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         current.updateLibrary({ libraryItems: items as any, merge: true, openLibraryMenu: true });
@@ -458,7 +465,9 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         const data = await res.json();
         const top20 = data.slice(0, 20);
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allItems: any[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const promises = top20.map((lib: any) =>
           fetch(`https://libraries.excalidraw.com/${lib.source}`)
             .then(r => r.json())
