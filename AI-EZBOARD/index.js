@@ -91,21 +91,21 @@ async function main() {
       });
 
       const payload = JSON.parse(newElementsJson);
-      let message = "";
+      let replyMessage = "";
       let newElements = [];
       
       if (Array.isArray(payload)) {
         newElements = payload;
       } else {
-        message = payload.message || "";
+        replyMessage = payload.message || "";
         newElements = payload.elements || [];
       }
 
-      if (message) {
-        console.log(`[INFO] Sending AI Chat message: "${message}"`);
+      if (replyMessage) {
+        console.log(`[INFO] Sending AI Chat message: "${replyMessage}"`);
         await page.evaluate((msg) => {
           if (window.sendAiChat) window.sendAiChat(msg);
-        }, message);
+        }, replyMessage);
       }
 
       console.log(`[INFO] Received ${newElements.length} elements from Agent. Drawing progressively...`);
