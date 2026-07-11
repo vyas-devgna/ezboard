@@ -1,11 +1,10 @@
 import {
   Excalidraw,
-  MainMenu,
   exportToCanvas,
-  sceneCoordsToViewportCoords,
+  MainMenu,
   viewportCoordsToSceneCoords,
 } from "@excalidraw/excalidraw";
-import type { AppState, BinaryFileData, BinaryFiles, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types/types";
+import type { AppState, BinaryFileData, BinaryFiles, ExcalidrawImperativeAPI, Collaborator } from "@excalidraw/excalidraw/types/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/types/element/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JsonValue } from "trystero";
@@ -19,6 +18,7 @@ import { EzRoom, MAX_PEERS, type BackgroundPayload, type ScenePayload } from "./
 import { generateRoomCode, normalizeRoomCode } from "./lib/room-code";
 import { diffElements, mergeElements, versionKey } from "./lib/scene";
 import { Avatar, Icon, ProfileDialog, Toasts, useToasts } from "./ui";
+import { LibraryBrowser } from "./LibraryBrowser";
 
 const UI_OPTIONS = {
   canvasActions: {
@@ -32,7 +32,7 @@ const UI_OPTIONS = {
 } as const;
 
 type Person = { name: string; accent: string; avatar?: string };
-type CursorState = { x: number; y: number; t: number };
+type CursorState = { x: number; y: number; t: number; tool?: "pointer" | "laser"; button?: "up" | "down" };
 type View = { scrollX: number; scrollY: number; zoom: number };
 
 export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile, onProfileChange }: {
@@ -69,6 +69,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
   const [participants, setParticipants] = useState<Record<string, Person>>({});
   const [cursors, setCursors] = useState<Record<string, CursorState>>({});
   const [panel, setPanel] = useState<"none" | "share" | "background" | "library">("none");
+  const [libraryBrowserOpen, setLibraryBrowserOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { toasts, push } = useToasts();
   const pushRef = useRef(push);
@@ -227,8 +228,8 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
     if (roomRef.current && !applyingRemote.current) scheduleFlush();
   }, [scheduleFlush, scheduleSave]);
 
-  const onPointerUpdate = useCallback((payload: { pointer: { x: number; y: number } }) => {
-    roomRef.current?.sendCursor({ x: payload.pointer.x, y: payload.pointer.y });
+  const onPointerUpdate = useCallback((payload: { pointer: { x: number; y: number; tool?: "pointer" | "laser" }; button: "up" | "down" }) => {
+    roomRef.current?.sendCursor({ x: payload.pointer.x, y: payload.pointer.y, tool: payload.pointer.tool, button: payload.button });
   }, []);
 
   /* ---------- actions ---------- */
@@ -278,10 +279,15 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
 
   const importFile = useCallback(async (file: File) => {
     try {
-      const parsed = JSON.parse(await file.text()) as { elements?: ExcalidrawElement[]; files?: Record<string, BinaryFileData> };
-      if (!Array.isArray(parsed.elements)) throw new Error("bad file");
+      const parsed = JSON.parse(await file.text()) as { type?: string; libraryItems?: any[]; elements?: ExcalidrawElement[]; files?: Record<string, BinaryFileData> };
       const current = apiRef.current;
       if (!current) return;
+      if (parsed.type === "excalidrawlib") {
+        current.updateLibrary({ libraryItems: parsed.libraryItems as any, merge: true, openLibraryMenu: true });
+        pushRef.current("Library imported successfully.");
+        return;
+      }
+      if (!Array.isArray(parsed.elements)) throw new Error("bad file");
       current.addFiles(Object.values(parsed.files ?? {}));
       current.updateScene({
         elements: mergeElements(current.getSceneElementsIncludingDeleted(), parsed.elements),
@@ -290,7 +296,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       current.scrollToContent(undefined, { fitToContent: true });
       pushRef.current("Imported into this board.");
     } catch {
-      pushRef.current("That file is not a valid .excalidraw scene.");
+      pushRef.current("That file is not a valid .excalidraw scene or library.");
     }
   }, []);
 
@@ -410,6 +416,26 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
     };
   }, []);
 
+  // Sync cursors into Excalidraw's native collaborators API
+  useEffect(() => {
+    if (!api || !roomCode) return;
+    const collabs = new Map<string, Collaborator>();
+    for (const [id, cursor] of Object.entries(cursors)) {
+      const person = participants[id];
+      if (person) {
+        const pointer: any = { x: cursor.x, y: cursor.y };
+        if (cursor.tool) pointer.tool = cursor.tool;
+        collabs.set(id, {
+          pointer,
+          button: cursor.button,
+          username: person.name,
+          color: { background: person.accent, stroke: "#fff" },
+        });
+      }
+    }
+    api.updateScene({ collaborators: collabs });
+  }, [api, cursors, participants, roomCode]);
+
   /* ---------- render ---------- */
 
   const initialData = useMemo(() => initial && {
@@ -433,6 +459,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         <MainMenu.Item onSelect={() => void doExportRef.current("pdf")} icon={<Icon name="download" size={14} />}>Export PDF</MainMenu.Item>
         <MainMenu.Item onSelect={() => void doExportRef.current("json")} icon={<Icon name="download" size={14} />}>Export .excalidraw</MainMenu.Item>
         <MainMenu.Item onSelect={() => fileInput.current?.click()} icon={<Icon name="upload" size={14} />}>Import .excalidraw</MainMenu.Item>
+        <MainMenu.Item onSelect={() => setLibraryBrowserOpen(true)} icon={<Icon name="shapes" size={14} />}>Top Libraries</MainMenu.Item>
         <MainMenu.Separator />
         <MainMenu.DefaultItems.ClearCanvas />
         <MainMenu.Separator />
@@ -500,25 +527,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         <div className="pattern-layer" style={patternStyle(background.pattern, background.tone, dark, view)} />
         {excalidraw ?? <div className="board-loading"><span className="spin"><Icon name="spinner" size={24} /></span></div>}
 
-        {api && roomCode && Object.entries(cursors).map(([id, cursor]) => {
-          const person = participants[id];
-          if (!person) return null;
-          const appState = api.getAppState();
-          const point = sceneCoordsToViewportCoords({ sceneX: cursor.x, sceneY: cursor.y }, appState);
-          const minX = appState.offsetLeft + 6, maxX = appState.offsetLeft + appState.width - 10;
-          const minY = appState.offsetTop + 6, maxY = appState.offsetTop + appState.height - 10;
-          const x = Math.min(Math.max(point.x, minX), maxX);
-          const y = Math.min(Math.max(point.y, minY), maxY);
-          const clamped = x !== point.x || y !== point.y;
-          return (
-            <div key={id} className={`remote-cursor ${clamped ? "edge" : ""}`} style={{ transform: `translate(${x}px, ${y}px)`, color: person.accent }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="#fff" strokeWidth="1.4">
-                <path d="M4 2.5 20 10l-7 2-3.5 6.5Z" />
-              </svg>
-              <b>{person.name}</b>
-            </div>
-          );
-        })}
+
 
         {panel === "library" && <Library onInsert={insertStencil} onClose={() => setPanel("none")} />}
 
@@ -580,8 +589,27 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         )}
       </section>
 
-      <input ref={fileInput} type="file" accept=".excalidraw,application/json" hidden
+      <input ref={fileInput} type="file" accept=".excalidraw,.excalidrawlib,application/json" hidden
         onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ""; }} />
+
+      {libraryBrowserOpen && (
+        <LibraryBrowser
+          onClose={() => setLibraryBrowserOpen(false)}
+          onInstall={async (lib) => {
+            try {
+              const res = await fetch(`https://libraries.excalidraw.com/libraries/${lib.source}`);
+              const data = await res.json();
+              if (apiRef.current && data.type === "excalidrawlib") {
+                apiRef.current.updateLibrary({ libraryItems: data.libraryItems, merge: true, openLibraryMenu: true });
+                pushRef.current(`Added ${lib.name} to your library.`);
+              }
+              setLibraryBrowserOpen(false);
+            } catch (err) {
+              pushRef.current(`Failed to load ${lib.name}.`);
+            }
+          }}
+        />
+      )}
 
       {profileOpen && <ProfileDialog profile={profile} onClose={() => setProfileOpen(false)}
         onSave={(next) => { onProfileChange(next); setProfileOpen(false); }} />}

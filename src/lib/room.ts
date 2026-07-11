@@ -12,7 +12,7 @@ export type ScenePayload = {
 export type BackgroundPayload = { pattern: PatternId; tone: ToneId };
 
 /** Cursor travels in Excalidraw *scene* coordinates so every peer can project it through their own scroll/zoom. */
-export type CursorPayload = { x: number; y: number };
+export type CursorPayload = { x: number; y: number; tool?: "pointer" | "laser"; button?: "up" | "down" };
 
 type WireProfile = { name: string; avatar: string; accent: string };
 
@@ -28,7 +28,7 @@ export type RoomCallbacks = {
 
 export const MAX_PEERS = 7; // 8 people per room; a full WebRTC mesh stays comfortable at this size
 const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024;
-const CURSOR_INTERVAL_MS = 40;
+const CURSOR_INTERVAL_MS = 20;
 
 export class EzRoom {
   private readonly room: Room;

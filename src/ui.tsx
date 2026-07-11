@@ -103,20 +103,23 @@ export function ProfileDialog({ profile, onClose, onSave }: {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.select(), []);
   const save = () => onSave({ ...profile, name: sanitizeName(name) || "You", accent, avatar });
+      const handleFile = async (file?: File) => {
+        if (!file) return;
+        try { setAvatar(await readAvatar(file)); setError(""); }
+        catch (reason) { setError(reason instanceof Error ? reason.message : "Could not use that image."); }
+      };
+
   return (
     <Modal onClose={onClose} className="profile-modal">
       <p className="eyebrow">YOUR PRESENCE</p>
       <h1>How others see you.</h1>
-      <div className="profile-row">
+      <div className="profile-row"
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+        onDrop={(e) => { e.preventDefault(); void handleFile(e.dataTransfer.files[0]); }}>
         <Avatar name={name || "You"} accent={accent} avatar={avatar} size={52} />
         <label className="avatar-upload">
           Add photo
-          <input type="file" accept="image/*" onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            try { setAvatar(await readAvatar(file)); setError(""); }
-            catch (reason) { setError(reason instanceof Error ? reason.message : "Could not use that image."); }
-          }} />
+          <input type="file" accept="image/*" onChange={(event) => void handleFile(event.target.files?.[0])} />
         </label>
         {avatar && <button className="text-button" onClick={() => setAvatar(undefined)}>Remove</button>}
       </div>
