@@ -25,6 +25,7 @@ import { LibraryBrowser } from "./LibraryBrowser";
 declare global {
   interface Window {
     onAIChatReceived?: (id: string, msg: string) => void;
+    sendAiChat?: (msg: string) => void;
     excalidrawAPI?: ExcalidrawImperativeAPI;
   }
 }
@@ -204,6 +205,12 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
         scheduleSave();
       },
     }, getScene, () => backgroundRef.current);
+    
+    window.sendAiChat = (msg: string) => {
+      roomRef.current?.sendAiChat(msg);
+      window.dispatchEvent(new CustomEvent("ai-chat", { detail: { id: "self", msg } }));
+    };
+    
     void updateMeta(boardId, { room: code });
     setMeta((current) => current ? { ...current, room: code } : current);
     history.replaceState(null, "", `#/room/${code}`);
@@ -648,7 +655,7 @@ export default function Board({ boardId, autoRoom, dark, onToggleTheme, profile,
       <input ref={fileInput} type="file" accept=".excalidraw,.excalidrawlib,application/json" hidden
         onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ""; }} />
 
-      <AIChat onSendAiChat={(msg) => roomRef.current?.sendAiChat(msg)} />
+      {roomCode && <AIChat onSendAiChat={(msg) => roomRef.current?.sendAiChat(msg)} />}
 
       {libraryBrowserOpen && api && (
         <LibraryBrowser

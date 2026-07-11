@@ -4,7 +4,7 @@ const readline = require("readline");
 let ROOM_CODE = process.argv[2];
 const BASE_URL = process.argv[3] || "https://ezboard.vyasdevgna.online";
 
-if (!ROOM_CODE) {
+if (!ROOM_CODE || ROOM_CODE === "--auto") {
   // Generate random 5 character valid room code (no I, L, O, 0, 1)
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   ROOM_CODE = "";
@@ -90,38 +90,56 @@ async function main() {
         rl.on("line", onLine);
       });
 
-      const newElements = JSON.parse(newElementsJson);
-      console.log(`[INFO] Received ${newElements.length} elements from Agent.`);
+      const payload = JSON.parse(newElementsJson);
+      let message = "";
+      let newElements = [];
       
-      if (newElements.length > 0) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const el of newElements) {
-          if (el.x < minX) minX = el.x;
-          if (el.y < minY) minY = el.y;
-          if (el.x + el.width > maxX) maxX = el.x + el.width;
-          if (el.y + el.height > maxY) maxY = el.y + el.height;
-        }
-        
-        if (minX !== Infinity) {
-          const centerX = (minX + maxX) / 2;
-          const centerY = (minY + maxY) / 2;
-          
-          const viewportCoords = await page.evaluate((cx, cy) => {
-            const state = window.excalidrawAPI.getAppState();
-            const vx = (cx + state.scrollX) * state.zoom.value;
-            const vy = (cy + state.scrollY) * state.zoom.value;
-            return { x: vx, y: vy };
-          }, centerX, centerY);
-          
-          await page.mouse.move(viewportCoords.x, viewportCoords.y, { steps: 25 });
-          await new Promise(r => setTimeout(r, 600)); 
-        }
+      if (Array.isArray(payload)) {
+        newElements = payload;
+      } else {
+        message = payload.message || "";
+        newElements = payload.elements || [];
       }
 
-      console.log(`[INFO] Applying elements to board...`);
-      await page.evaluate((newElementsStr) => {
-        window.excalidrawAPI.updateScene({ elements: JSON.parse(newElementsStr), commitToHistory: false });
-      }, JSON.stringify(newElements));
+      if (message) {
+        console.log(`[INFO] Sending AI Chat message: "${message}"`);
+        await page.evaluate((msg) => {
+          if (window.sendAiChat) window.sendAiChat(msg);
+        }, message);
+      }
+
+      console.log(`[INFO] Received ${newElements.length} elements from Agent. Drawing progressively...`);
+      
+      const allElements = await page.evaluate(() => window.excalidrawAPI.getSceneElements());
+
+      for (const el of newElements) {
+        // Move cursor to element center
+        const centerX = el.x + (el.width || 0) / 2;
+        const centerY = el.y + (el.height || 0) / 2;
+        
+        const viewportCoords = await page.evaluate((cx, cy) => {
+          const state = window.excalidrawAPI.getAppState();
+          const vx = (cx + state.scrollX) * state.zoom.value;
+          const vy = (cy + state.scrollY) * state.zoom.value;
+          return { x: vx, y: vy };
+        }, centerX, centerY);
+        
+        // Slightly random steps for realistic mouse movement
+        await page.mouse.move(viewportCoords.x, viewportCoords.y, { steps: 5 + Math.floor(Math.random() * 5) });
+        
+        // Pause briefly before drawing
+        await new Promise(r => setTimeout(r, 50)); 
+        
+        // Add element
+        allElements.push(el);
+        await page.evaluate((els) => {
+          window.excalidrawAPI.updateScene({ elements: JSON.parse(els), commitToHistory: false });
+        }, JSON.stringify(allElements));
+        
+        // Pause briefly after drawing
+        await new Promise(r => setTimeout(r, 150)); 
+      }
+      console.log(`[INFO] Finished drawing elements.`);
 
     } catch (err) {
       console.error("[ERROR] Failed to process request:", err);
