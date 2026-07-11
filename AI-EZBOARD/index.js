@@ -27,11 +27,22 @@ const rl = readline.createInterface({
   terminal: false
 });
 
-let resolveAiResponse = null;
+let pendingRequests = [];
+let buffer = "";
+let reading = false;
 
 rl.on("line", (line) => {
-  if (resolveAiResponse && line.startsWith("=== EZBOARD_REPLY_END ===")) {
-    resolveAiResponse(null);
+  if (line.trim() === "=== EZBOARD_REPLY_START ===") {
+    reading = true;
+    buffer = "";
+  } else if (line.trim() === "=== EZBOARD_REPLY_END ===") {
+    reading = false;
+    if (pendingRequests.length > 0) {
+      const resolve = pendingRequests.shift();
+      resolve(buffer);
+    }
+  } else if (reading) {
+    buffer += line + "\n";
   }
 });
 
@@ -90,25 +101,19 @@ async function main() {
       }
 
       const newElementsJson = await new Promise((resolve) => {
-        let buffer = "";
-        let reading = false;
-        
-        const onLine = (line) => {
-          if (line === "=== EZBOARD_REPLY_START ===") {
-            reading = true;
-            buffer = "";
-          } else if (line === "=== EZBOARD_REPLY_END ===") {
-            reading = false;
-            rl.removeListener("line", onLine);
-            resolve(buffer);
-          } else if (reading) {
-            buffer += line + "\n";
-          }
-        };
-        rl.on("line", onLine);
+        pendingRequests.push(resolve);
       });
 
-      const payload = JSON.parse(newElementsJson);
+      let payload;
+      try {
+        payload = JSON.parse(newElementsJson);
+      } catch (err) {
+        console.error("[ERROR] JSON parse failed:", err.message, "Buffer:", newElementsJson);
+        await page.evaluate(() => {
+          if (window.sendAiChat) window.sendAiChat("ERROR: Agent sent invalid JSON payload.");
+        });
+        return;
+      }
       let replyMessage = "";
       let newElements = [];
       
